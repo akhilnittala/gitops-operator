@@ -231,6 +231,7 @@ func main() {
 		LocalUsers: &argocdprovisioner.LocalUsersInfo{
 			TokenRenewalTimers: map[string]*argocdprovisioner.TokenRenewalTimer{},
 		},
+		EnableRedHatRegistryImages: true,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Argo CD")
 		os.Exit(1)
