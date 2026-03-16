@@ -122,6 +122,31 @@ func (r *ArgoCDMetricsReconciler) Reconcile(ctx context.Context, request reconci
 		monitoringLabel = userDefinedMonitoringLabel
 	}
 
+	if argocd.Spec.Monitoring.Enabled == nil || *argocd.Spec.Monitoring.Enabled {
+		// Create alert rule when enabled is nil and enabled is explicitly set to true
+		err = r.createPrometheusRuleIfAbsent(request.Namespace, argocd, reqLogger)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	} else if !*argocd.Spec.Monitoring.Enabled {
+		// when Enabled is set to false explicitly then only it will delete prometheus Alert
+		existingAlertRule := &monitoringv1.PrometheusRule{}
+		key := types.NamespacedName{
+			Name:      alertRuleName,
+			Namespace: request.Namespace,
+		}
+		if err := r.Client.Get(ctx, key, existingAlertRule); err != nil {
+			if errors.IsNotFound(err) {
+				reqLogger.Info("PrometheusRule not found", "Namespace", key.Namespace, "Name", key.Name)
+				return reconcile.Result{}, nil
+			}
+		}
+		if err := r.Client.Delete(ctx, existingAlertRule); err != nil {
+			reqLogger.Error(err, "Failed to delete PrometheusRule", "Namespace", key.Namespace, "Name", key.Name)
+			return reconcile.Result{}, err
+		}
+	}
+	//create prometheus resources for scraping metrics
 	if argocd.Spec.Monitoring.DisableMetrics == nil || !*argocd.Spec.Monitoring.DisableMetrics {
 		if !exists || labelVal != "true" {
 			if namespace.Labels == nil {
@@ -168,12 +193,6 @@ func (r *ArgoCDMetricsReconciler) Reconcile(ctx context.Context, request reconci
 		serviceMonitorLabel = fmt.Sprintf("%s-repo-server", request.Name)
 		serviceMonitorName = fmt.Sprintf("%s-repo-server", request.Name)
 		err = r.createServiceMonitorIfAbsent(request.Namespace, argocd, serviceMonitorName, serviceMonitorLabel, reqLogger)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Create alert rule
-		err = r.createPrometheusRuleIfAbsent(request.Namespace, argocd, reqLogger)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -236,16 +255,6 @@ func (r *ArgoCDMetricsReconciler) Reconcile(ctx context.Context, request reconci
 			err = r.deleteServiceMonitor(serviceMonitorName, request.Namespace, reqLogger)
 			if err != nil {
 				return reconcile.Result{}, err
-			}
-
-			// Delete alert rule
-			err = r.Client.Delete(context.TODO(), &monitoringv1.PrometheusRule{ObjectMeta: metav1.ObjectMeta{Namespace: request.Namespace, Name: alertRuleName}})
-			if err != nil {
-				if !errors.IsNotFound(err) {
-					reqLogger.Error(err, "Error deleting prometheus in ",
-						"Namespace", request.Namespace)
-					return reconcile.Result{}, err
-				}
 			}
 
 		}

@@ -214,7 +214,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	CLUSTER_SCOPED_ARGO_ROLLOUTS_NAMESPACES=argo-rollouts,test-rom-ns-1,rom-ns-1,openshift-gitops  ARGOCD_CLUSTER_CONFIG_NAMESPACES="openshift-gitops, argocd-e2e-cluster-config, argocd-test-impersonation-1-046, argocd-agent-principal-1-051, argocd-agent-agent-1-052, appset-argocd, appset-old-ns, appset-new-ns, ns-hosting-principal, ns-hosting-managed-agent, ns-hosting-autonomous-agent"  REDIS_CONFIG_PATH="build/redis"   go run ./cmd/main.go
 
 .PHONY: docker-build
-docker-build: test ## Build container image with the manager.
+docker-build:  ## Build container image with the manager.
 	$(CONTAINER_RUNTIME) build -t ${IMG} .
 
 .PHONY: docker-push
@@ -256,7 +256,7 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 	## TODO: Remove sed usage after all v1alpha1 references are updated to v1beta1 in codebase.
 	## For local testing, conversion webhook defined in crd makes call to webhook for each v1alpha1 reference
 	## causing failures as we don't set up the webhook for local testing.
-	$(KUSTOMIZE) build config/crd | sed '/conversion:/,/- v1beta1/d' |kubectl apply --server-side=true -f -
+	$(KUSTOMIZE) build config/crd | sed '/conversion:/,/- v1beta1/d' | kubectl apply --server-side=true --force-conflicts -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
@@ -265,7 +265,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply --server-side=true -f -
+	$(KUSTOMIZE) build config/default | kubectl apply --server-side=true --force-conflicts -f -
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.

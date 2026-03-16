@@ -21,6 +21,7 @@ import (
 
 	argoapp "github.com/argoproj-labs/argocd-operator/api/v1beta1"
 	argoappController "github.com/argoproj-labs/argocd-operator/controllers/argocd"
+	"github.com/aws/smithy-go/ptr"
 	v1 "k8s.io/api/core/v1"
 	resourcev1 "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -253,6 +254,9 @@ func NewCR(name, ns string, client client.Client) (*argoapp.ArgoCD, error) {
 			Server:             getArgoServerSpec(),
 			RBAC:               getDefaultRBAC(),
 			ResourceExclusions: string(b),
+			Monitoring: argoapp.ArgoCDMonitoringSpec{
+				Enabled: ptr.Bool(true),
+			},
 		},
 	}, nil
 }

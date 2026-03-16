@@ -2,6 +2,7 @@
 FROM golang:1.25 as builder
 
 WORKDIR /workspace
+COPY argocd-operator /workspace/argocd-operator
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
